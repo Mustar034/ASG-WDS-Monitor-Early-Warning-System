@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>空地海地面站智能数显系统</title>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- 自定义样式 -->
+    <style>
+        :root {
+            --primary-color: #1a237e;
+            --secondary-color: #00bcd4;
+            --accent-color: #ff4081;
+            --dark-bg: #0a0e2a;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --text-color: #ffffff;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0e2a 0%, #1a237e 100%);
+            color: var(--text-color);
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .navbar {
+            background: rgba(10, 14, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 188, 212, 0.3);
+        }
+        
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00bcd4, #ff4081);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 20px rgba(0, 188, 212, 0.3);
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(90deg, rgba(26, 35, 126, 0.5), rgba(0, 188, 212, 0.3));
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(0, 188, 212, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 188, 212, 0.2);
+            border-color: var(--secondary-color);
+        }
+        
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: #aaa;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .chart-container {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        
+        .status-active {
+            background: linear-gradient(45deg, #00c853, #64dd17);
+            color: white;
+        }
+        
+        .status-ready {
+            background: linear-gradient(45deg, #2979ff, #00b0ff);
+            color: white;
+        }
+        
+        .map-container {
+            height: 400px;
+            border-radius: 15px;
+            overflow: hidden;
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .connection-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .connected {
+            background-color: #4caf50;
+        }
+        
+        .disconnected {
+            background-color: #f44336;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .last-update {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        .footer {
+            margin-top: 3rem;
+            padding: 2rem 0;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand logo" href="#">
+                <i class="fas fa-satellite me-2"></i>
+                空地海地面站智能数显系统
+            </a>
+            <div class="connection-status">
+                <div class="connection-dot connected" id="connection-dot"></div>
+                <span id="connection-status">已连接</span>
+                <span class="last-update ms-3" id="last-update">最后更新: --</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主仪表盘 -->
+    <div class="container-fluid">
+        <!-- 系统状态 -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="dashboard-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="display-6 mb-3">
+                                <i class="fas fa-rocket me-2"></i>
+                                空地海一体化智能监控平台
+                            </h1>
+                            <p class="lead mb-0">
+                                实时监控无人船(USV)、无人机(UAV)状态及环境数据
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="row">
+                                <div class="col-6">
+                                    <span class="status-badge status-ready">UAV: 就绪</span>
+                                </div>
+                                <div class="col-6">
+                                    <span class="status-badge status-active">USV: 活动中</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 实时数据卡片 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon text-info">
+                        <i class="fas fa-thermometer-half"></i>
+                    </div>
+                    <div class="stat-value" id="temperature-value">-- °C</div>
+                    <div class="stat-label">温度</div>
+                    <div class="progress mt-2" style="height: 5px;">
+                        <div id="temp-progress" class="progress-bar bg-info" style="width: 50%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon text-success">
+                        <i class="fas fa-tint"></i>
+                    </div>
+                    <div class="stat-value" id="humidity-value">-- %</div>
+                    <div class="stat-label">湿度</div>
+                    <div class="progress mt-2" style="height: 5px;">
+                        <div id="humidity-progress" class="progress-bar bg-success" style="width: 50%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon text-warning">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <div class="stat-value" id="pressure-value">-- hPa</div>
+                    <div class="stat-label">气压</div>
+                    <div class="progress mt-2" style="height: 5px;">
+                        <div id="pressure-progress" class="progress-bar bg-warning" style="width: 50%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon text-primary">
+                        <i class="fas fa-sun"></i>
+                    </div>
+                    <div class="stat-value" id="light-value">-- lux</div>
+                    <div class="stat-label">光照强度</div>
+                    <div class="progress mt-2" style="height: 5px;">
+                        <div id="light-progress" class="progress-bar bg-primary" style="width: 50%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表区域 -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="chart-container">
+                    <h5><i class="fas fa-chart-line me-2"></i>环境数据趋势</h5>
+                    <div id="main-chart" style="height: 400px;"></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="chart-container">
+                    <h5><i class="fas fa-chart-pie me-2"></i>系统评分</h5>
+                    <div id="score-chart" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 地图和位置信息 -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="chart-container">
+                    <h5><i class="fas fa-map-marked-alt me-2"></i>设备位置监控</h5>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="map-container" id="map-container">
+                                <!-- 这里可以集成地图，暂时用图片代替 -->
+                                <div class="d-flex align-items-center justify-content-center h-100">
+                                    <div class="text-center">
+                                        <i class="fas fa-map fa-5x mb-3 text-muted"></i>
+                                        <p>地图显示区域</p>
+                                        <small class="text-muted">UAV: <span id="uav-position">36.1250, 120.6550</span></small><br>
+                                        <small class="text-muted">USV: <span id="usv-position">36.1180, 120.6620</span></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <div class="stat-card">
+                                        <div class="stat-icon text-danger">
+                                            <i class="fas fa-water"></i>
+                                        </div>
+                                        <div class="stat-value" id="water-quality">-- %</div>
+                                        <div class="stat-label">水质评分</div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="stat-card">
+                                        <div class="stat-icon text-warning">
+                                            <i class="fas fa-shield-alt"></i>
+                                        </div>
+                                        <div class="stat-value" id="dam-safety">-- %</div>
+                                        <div class="stat-label">大坝安全评分</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统信息 -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="chart-container">
+                    <h5><i class="fas fa-info-circle me-2"></i>系统信息</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <small class="text-muted">数据来源</small>
+                                <div id="data-source">--</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <small class="text-muted">采集次数</small>
+                                <div id="collection-count">--</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <small class="text-muted">运行时间</small>
+                                <div id="uptime">--</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <small class="text-muted">最后连接</small>
+                                <div id="last-connection">--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p class="mb-2">
+                <i class="fas fa-copyright"></i> 2024 空地海地面站智能数显系统
+            </p>
+            <p class="text-muted mb-0">
+                树莓派传感器数据采集终端 | 版本 1.0.0
+            </p>
+        </div>
+    </footer>
+
+    <!-- Socket.io -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 主脚本 -->
+    <script>
+        // 初始化变量
+        let socket;
+        let mainChart;
+        let scoreChart;
+        let collectionCount = 0;
+        let startTime = new Date();
+
+        // 连接WebSocket
+        function connectWebSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                console.log('已连接到服务器');
+                updateConnectionStatus(true);
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('与服务器断开连接');
+                updateConnectionStatus(false);
+            });
+            
+            socket.on('data_update', function(data) {
+                console.log('收到数据更新:', data);
+                updateDashboard(data.data);
+                updateLastUpdate(data.timestamp);
+                collectionCount++;
+                updateCollectionCount();
+            });
+        }
+
+        // 更新连接状态
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('connection-dot');
+            const status = document.getElementById('connection-status');
+            
+            if (connected) {
+                dot.className = 'connection-dot connected';
+                status.textContent = '已连接';
+                status.style.color = '#4caf50';
+            } else {
+                dot.className = 'connection-dot disconnected';
+                status.textContent = '断开连接';
+                status.style.color = '#f44336';
+            }
+        }
+
+        // 更新最后更新时间
+        function updateLastUpdate(timestamp) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString();
+            document.getElementById('last-update').textContent = `最后更新: ${timeStr}`;
+            document.getElementById('last-connection').textContent = timeStr;
+        }
+
+        // 更新运行时间
+        function updateUptime() {
+            const now = new Date();
+            const diff = now - startTime;
+            const hours = Math.floor(diff / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            
+            document.getElementById('uptime').textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // 更新采集次数
+        function updateCollectionCount() {
+            document.getElementById('collection-count').textContent = collectionCount;
+        }
+
+        // 更新仪表盘数据
+        function updateDashboard(data) {
+            // USV数据
+            const usv = data.usv || {};
+            document.getElementById('temperature-value').textContent = `${usv.temp || '--'} °C`;
+            document.getElementById('humidity-value').textContent = `${usv.humidity || '--'} %`;
+            document.getElementById('pressure-value').textContent = `${usv.pressure || '--'} hPa`;
+            document.getElementById('light-value').textContent = `${usv.light || '--'} lux`;
+            
+            // 位置信息
+            const uav = data.uav || {};
+            document.getElementById('uav-position').textContent = `${uav.lat || '--'}, ${uav.lng || '--'}`;
+            document.getElementById('usv-position').textContent = `${usv.lat || '--'}, ${usv.lng || '--'}`;
+            
+            // 评分数据
+            const scores = data.scores || {};
+            document.getElementById('water-quality').textContent = `${scores.water_quality || '--'} %`;
+            document.getElementById('dam-safety').textContent = `${scores.dam_safety || '--'} %`;
+            
+            // 数据来源
+            const meta = data.meta || {};
+            document.getElementById('data-source').textContent = meta.source || '--';
+            
+            // 更新进度条
+            updateProgressBars(usv);
+            
+            // 更新图表
+            updateCharts(data);
+        }
+
+        // 更新进度条
+        function updateProgressBars(usv) {
+            // 温度进度 (假设范围: -10°C 到 50°C)
+            const temp = usv.temp || 0;
+            const tempPercent = ((temp + 10) / 60) * 100;
+            document.getElementById('temp-progress').style.width = `${Math.min(100, Math.max(0, tempPercent))}%`;
+            
+            // 湿度进度 (0-100%)
+            const humidity = usv.humidity || 0;
+            document.getElementById('humidity-progress').style.width = `${humidity}%`;
+            
+            // 气压进度 (假设范围: 950-1050 hPa)
+            const pressure = usv.pressure || 0;
+            const pressurePercent = ((pressure - 950) / 100) * 100;
+            document.getElementById('pressure-progress').style.width = `${Math.min(100, Math.max(0, pressurePercent))}%`;
+            
+            // 光照进度 (假设范围: 0-2000 lux)
+            const light = usv.light || 0;
+            const lightPercent = (light / 2000) * 100;
+            document.getElementById('light-progress').style.width = `${Math.min(100, Math.max(0, lightPercent))}%`;
+        }
+
+        // 初始化ECharts图表
+        function initCharts() {
+            // 主趋势图
+            const mainChartDom = document.getElementById('main-chart');
+            mainChart = echarts.init(mainChartDom);
+            
+            mainChart.setOption({
+                title: {
+                    text: '环境数据实时趋势',
+                    left: 'center',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: ['温度', '湿度', '气压', '光照'],
+                    textStyle: { color: '#ccc' },
+                    top: '10%'
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    top: '20%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: [],
+                    axisLine: { lineStyle: { color: '#666' } },
+                    axisLabel: { color: '#999' }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: { lineStyle: { color: '#666' } },
+                    axisLabel: { color: '#999' },
+                    splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+                },
+                series: [
+                    {
+                        name: '温度',
+                        type: 'line',
+                        smooth: true,
+                        data: [],
+                        lineStyle: { color: '#00bcd4' },
+                        itemStyle: { color: '#00bcd4' }
+                    },
+                    {
+                        name: '湿度',
+                        type: 'line',
+                        smooth: true,
+                        data: [],
+                        lineStyle: { color: '#4caf50' },
+                        itemStyle: { color: '#4caf50' }
+                    },
+                    {
+                        name: '气压',
+                        type: 'line',
+                        smooth: true,
+                        data: [],
+                        lineStyle: { color: '#ff9800' },
+                        itemStyle: { color: '#ff9800' }
+                    },
+                    {
+                        name: '光照',
+                        type: 'line',
+                        smooth: true,
+                        data: [],
+                        lineStyle: { color: '#2196f3' },
+                        itemStyle: { color: '#2196f3' }
+                    }
+                ]
+            });
+
+            // 评分饼图
+            const scoreChartDom = document.getElementById('score-chart');
+            scoreChart = echarts.init(scoreChartDom);
+            
+            scoreChart.setOption({
+                title: {
+                    text: '系统评分分布',
+                    left: 'center',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b}: {c} ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    left: 'left',
+                    textStyle: { color: '#ccc' }
+                },
+                series: [
+                    {
+                        name: '评分',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        center: ['50%', '60%'],
+                        data: [
+                            { value: 0, name: '水质评分' },
+                            { value: 0, name: '大坝安全' },
+                            { value: 0, name: '环境评分' }
+                        ],
+                        emphasis: {
+                            itemStyle: {
+                                shadowBlur: 10,
+                                shadowOffsetX: 0,
+                                shadowColor: 'rgba(0, 0, 0, 0.5)'
+                            }
+                        },
+                        label: {
+                            color: '#fff'
+                        }
+                    }
+                ]
+            });
+        }
+
+        // 更新图表数据
+        function updateCharts(data) {
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
+                           now.getMinutes().toString().padStart(2, '0') + ':' + 
+                           now.getSeconds().toString().padStart(2, '0');
+            
+            // 获取主图选项
+            const mainOption = mainChart.getOption();
+            const xData = mainOption.xAxis[0].data || [];
+            const tempData = mainOption.series[0].data || [];
+            const humidityData = mainOption.series[1].data || [];
+            const pressureData = mainOption.series[2].data || [];
+            const lightData = mainOption.series[3].data || [];
+            
+            // 添加新数据
+            xData.push(timeStr);
+            tempData.push(data.usv.temp || 0);
+            humidityData.push(data.usv.humidity || 0);
+            pressureData.push(data.usv.pressure || 0);
+            lightData.push((data.usv.light || 0) / 10); // 缩放光照数据
+            
+            // 保持最多20个数据点
+            const maxPoints = 20;
+            if (xData.length > maxPoints) {
+                xData.shift();
+                tempData.shift();
+                humidityData.shift();
+                pressureData.shift();
+                lightData.shift();
+            }
+            
+            // 更新主图
+            mainChart.setOption({
+                xAxis: { data: xData },
+                series: [
+                    { data: tempData },
+                    { data: humidityData },
+                    { data: pressureData },
+                    { data: lightData }
+                ]
+            });
+
+            // 更新评分饼图
+            const scores = data.scores || {};
+            const waterQuality = scores.water_quality || 0;
+            const damSafety = scores.dam_safety || 0;
+            const envScore = (waterQuality + damSafety) / 2;
+            
+            scoreChart.setOption({
+                series: [{
+                    data: [
+                        { value: waterQuality, name: '水质评分' },
+                        { value: damSafety, name: '大坝安全' },
+                        { value: envScore, name: '环境评分' }
+                    ]
+                }]
+            });
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化图表
+            initCharts();
+            
+            // 连接WebSocket
+            connectWebSocket();
+            
+            // 更新运行时间
+            setInterval(updateUptime, 1000);
+            
+            // 初始获取数据
+            fetch('/api/data')
+                .then(response => response.json())
+                .then(data => {
+                    updateDashboard(data);
+                    updateLastUpdate(new Date().toLocaleTimeString());
+                });
+            
+            // 获取历史数据
+            fetch('/api/history')
+                .then(response => response.json())
+                .then(history => {
+                    // 这里可以处理历史数据
+                    console.log('历史数据:', history);
+                });
+        });
+
+        // 窗口大小改变时重绘图表
+        window.addEventListener('resize', function() {
+            mainChart.resize();
+            scoreChart.resize();
+        });
+    </script>
+</body>
+</html>
