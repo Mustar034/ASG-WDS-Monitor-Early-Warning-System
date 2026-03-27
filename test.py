@@ -184,6 +184,7 @@ class SmartServerTester:
             print(f"   - 测试的端点: {endpoint}")
             print(f"   - 返回的状态码")
             print(f"   - 完整的错误响应")
+            print("\n🔍 继续调试时可以使用上面的建议配置进行测试")
         
         print("=" * 60)
         return success
